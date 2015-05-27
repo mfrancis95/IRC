@@ -14,7 +14,7 @@ import java.util.TimerTask;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
-public class IRCBot {
+public class IRCClient {
     
     private Socket socket;
     
@@ -30,7 +30,7 @@ public class IRCBot {
     
     private Timer timer;
     
-    public IRCBot(String server, int port) throws IOException {
+    public IRCClient(String server, int port) throws IOException {
         socket = new Socket();
         socket.connect(new InetSocketAddress(server, port), 2000);
         in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -67,13 +67,17 @@ public class IRCBot {
         sendLines("PASS " + password, "NICK " + nickname);
     }
     
+    public void pong(String server) {
+        sendLines("PONG :" + server);
+    }
+    
     public void removeListener(IRCListener listener) {
         listeners.remove(listener);
     }
     
     public void sendLines(String... lines) {
         for (String line : lines) {
-            outputQueue.offer(line + "\r\n");
+            outputQueue.offer(line);
         }
     }
     
@@ -93,7 +97,15 @@ public class IRCBot {
                         String user = line.substring(1, line.indexOf("!"));
                         for (IRCListener listener : listeners) {
                             if (listener instanceof IRCJoinListener) {
-                                ((IRCJoinListener) listener).onJoin(IRCBot.this, channel, user);
+                                ((IRCJoinListener) listener).onJoin(IRCClient.this, channel, user);
+                            }
+                        }
+                    }
+                    else if (line.contains("PING")) {
+                        String server = line.substring(6);
+                        for (IRCListener listener : listeners) {
+                            if (listener instanceof IRCPingListener) {
+                                ((IRCPingListener) listener).onPing(IRCClient.this, server);
                             }
                         }
                     }
@@ -105,7 +117,7 @@ public class IRCBot {
                         message = message.substring(message.indexOf(":"));
                         for (IRCListener listener : listeners) {
                             if (listener instanceof IRCChatListener) {
-                                ((IRCChatListener) listener).onMessage(IRCBot.this, from, to, message);
+                                ((IRCChatListener) listener).onMessage(IRCClient.this, from, to, message);
                             }
                         }
                     }
@@ -124,7 +136,7 @@ public class IRCBot {
             while (socket.isConnected()) {
                 if (messages > 0) {
                     try {
-                        String message = outputQueue.take();
+                        String message = outputQueue.take() + "\r\n";
                         out.write(message);
                         out.flush();
                         System.out.print("Message sent: " + message);
