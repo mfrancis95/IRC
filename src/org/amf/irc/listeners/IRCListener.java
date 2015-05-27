@@ -1,3 +1,3 @@
-package org.amf.irc;
+package org.amf.irc.listeners;
 
 public interface IRCListener {}

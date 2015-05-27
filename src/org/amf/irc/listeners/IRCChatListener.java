@@ -1,4 +1,6 @@
-package org.amf.irc;
+package org.amf.irc.listeners;
+
+import org.amf.irc.IRCClient;
 
 public interface IRCChatListener extends IRCListener {
     
