@@ -88,7 +88,16 @@ public class IRCBot {
                 String line;
                 while ((line = in.readLine()) != null) {
                     System.out.println(line);
-                    if (line.contains("PRIVMSG")) {
+                    if (line.contains("JOIN")) {
+                        String channel = line.substring(line.indexOf("#"));
+                        String user = line.substring(1, line.indexOf("!"));
+                        for (IRCListener listener : listeners) {
+                            if (listener instanceof IRCJoinListener) {
+                                ((IRCJoinListener) listener).onJoin(IRCBot.this, channel, user);
+                            }
+                        }
+                    }
+                    else if (line.contains("PRIVMSG")) {
                         String from = line.substring(1, line.indexOf("!"));
                         String to = line.substring(line.indexOf("#"));
                         String message = to;
@@ -115,8 +124,10 @@ public class IRCBot {
             while (socket.isConnected()) {
                 if (messages > 0) {
                     try {
-                        out.write(outputQueue.take());
+                        String message = outputQueue.take();
+                        out.write(message);
                         out.flush();
+                        System.out.print("Message sent: " + message);
                         System.out.println("Messages remaining before timeout: " + (--messages));
                     } 
                     catch (Exception ex) {
