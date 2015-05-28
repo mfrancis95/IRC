@@ -17,6 +17,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import org.amf.irc.listeners.IRCLeaveListener;
 import org.amf.irc.listeners.IRCLineListener;
 
 public class IRCClient {
@@ -114,6 +115,15 @@ public class IRCClient {
                         for (IRCListener listener : listeners) {
                             if (listener instanceof IRCJoinListener) {
                                 ((IRCJoinListener) listener).onJoin(IRCClient.this, channel, user);
+                            }
+                        }
+                    }
+                    else if (line.contains("PART")) {
+                        String channel = line.substring(line.indexOf("#"));
+                        String user = line.substring(1, line.indexOf("!"));
+                        for (IRCListener listener : listeners) {
+                            if (listener instanceof IRCLeaveListener) {
+                                ((IRCLeaveListener) listener).onLeave(IRCClient.this, channel, user);
                             }
                         }
                     }
