@@ -17,6 +17,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import org.amf.irc.listeners.IRCLineListener;
 
 public class IRCClient {
     
@@ -33,6 +34,10 @@ public class IRCClient {
     private int messages;
     
     private Timer timer;
+    
+    public IRCClient(String server) throws IOException {
+        this(server, 6667);
+    }
     
     public IRCClient(String server, int port) throws IOException {
         socket = new Socket();
@@ -60,33 +65,36 @@ public class IRCClient {
     }
     
     public void join(String channel) {
-        sendLines("JOIN " + channel);
+        sendLine("JOIN " + channel);
     }
     
     public void leave(String channel) {
-        sendLines("PART " + channel);
+        sendLine("PART " + channel);
+    }
+    
+    public void logIn(String nickname) {
+        sendLine("NICK " + nickname);
     }
     
     public void logIn(String nickname, String password) {
-        sendLines("PASS " + password, "NICK " + nickname);
+        sendLine("PASS " + password);
+        sendLine("NICK " + nickname);
     }
     
     public void pong(String server) {
-        sendLines("PONG :" + server);
+        sendLine("PONG :" + server);
     }
     
     public void removeListener(IRCListener listener) {
         listeners.remove(listener);
     }
     
-    public void sendLines(String... lines) {
-        for (String line : lines) {
-            outputQueue.offer(line);
-        }
+    public void sendLine(String line) {
+        outputQueue.offer(line);
     }
     
     public void sendMessage(String channel, String message) {
-        sendLines("PRIVMSG " + channel + " :" + message);
+        sendLine("PRIVMSG " + channel + " :" + message);
     }
     
     private class Input implements Runnable {
@@ -95,7 +103,11 @@ public class IRCClient {
             try {
                 String line;
                 while ((line = in.readLine()) != null) {
-                    System.out.println(line);
+                    for (IRCListener listener : listeners) {
+                        if (listener instanceof IRCLineListener) {
+                            ((IRCLineListener) listener).onLine(IRCClient.this, line);
+                        }
+                    }
                     if (line.contains("JOIN")) {
                         String channel = line.substring(line.indexOf("#"));
                         String user = line.substring(1, line.indexOf("!"));
@@ -122,6 +134,13 @@ public class IRCClient {
                         for (IRCListener listener : listeners) {
                             if (listener instanceof IRCChatListener) {
                                 ((IRCChatListener) listener).onMessage(IRCClient.this, from, to, message);
+                            }
+                        }
+                    }
+                    else {
+                        for (IRCListener listener : listeners) {
+                            if (listener instanceof IRCLineListener) {
+                                ((IRCLineListener) listener).onLine(IRCClient.this, line);
                             }
                         }
                     }
