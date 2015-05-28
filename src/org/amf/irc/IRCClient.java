@@ -73,10 +73,6 @@ public class IRCClient {
         sendLine("PART " + channel);
     }
     
-    public void logIn(String nickname) {
-        sendLine("NICK " + nickname);
-    }
-    
     public void logIn(String nickname, String password) {
         sendLine("PASS " + password);
         sendLine("NICK " + nickname);
@@ -144,13 +140,6 @@ public class IRCClient {
                         for (IRCListener listener : listeners) {
                             if (listener instanceof IRCChatListener) {
                                 ((IRCChatListener) listener).onMessage(IRCClient.this, from, to, message);
-                            }
-                        }
-                    }
-                    else {
-                        for (IRCListener listener : listeners) {
-                            if (listener instanceof IRCLineListener) {
-                                ((IRCLineListener) listener).onLine(IRCClient.this, line);
                             }
                         }
                     }
