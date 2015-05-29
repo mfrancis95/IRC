@@ -133,7 +133,7 @@ public class IRCClient {
                     }
                     else if (line.contains("PRIVMSG")) {
                         String from = line.substring(1, line.indexOf("!"));
-                        String to = line.substring(line.indexOf("#"));
+                        String to = line.substring(line.indexOf("PRIVMSG") + 8);
                         String message = to;
                         to = to.substring(0, to.indexOf(" "));
                         message = message.substring(message.indexOf(":"));

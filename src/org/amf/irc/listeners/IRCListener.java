@@ -1,3 +1,5 @@
 package org.amf.irc.listeners;
 
-public interface IRCListener {}
+import org.amf.irc.IRCClient;
+
+public interface IRCListener<C extends IRCClient> {}

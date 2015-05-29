@@ -2,9 +2,9 @@ package org.amf.irc.listeners;
 
 import org.amf.irc.IRCClient;
 
-public interface IRCLineListener extends IRCListener {
+public interface IRCLineListener<C extends IRCClient> extends IRCListener<C> {
     
-    default void onLine(IRCClient client, String line) {
+    default void onLine(C client, String line) {
         System.out.println(line);
     }
     
