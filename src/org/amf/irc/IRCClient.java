@@ -13,8 +13,6 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import org.amf.irc.listeners.IRCLeaveListener;
@@ -32,9 +30,7 @@ public class IRCClient {
     
     private BlockingQueue<String> outputQueue;
     
-    private int messages;
-    
-    private Timer timer;
+    private long sendDelay = (long) (30.0 / 20.0 * 1000.0);
     
     public IRCClient(String server) throws IOException {
         this(server, 6667);
@@ -47,22 +43,16 @@ public class IRCClient {
         out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
         listeners = new LinkedList<>();
         outputQueue = new LinkedBlockingQueue<>();
-        messages = 20;
-        timer = new Timer();
-        timer.scheduleAtFixedRate(new TimerTask() {
-
-            public void run() {
-                messages = 20;
-                System.out.println("Messages remaining before timeout: " + messages);
-            }
-            
-        }, 30000, 30000);
         new Thread(new Input()).start();
         new Thread(new Output()).start();
     }
     
     public void addListener(IRCListener listener) {
         listeners.add(listener);
+    }
+    
+    public long getSendDelay() {
+        return sendDelay;
     }
     
     public void join(String channel) {
@@ -92,6 +82,10 @@ public class IRCClient {
     
     public void sendMessage(String channel, String message) {
         sendLine("PRIVMSG " + channel + " :" + message);
+    }
+    
+    public void setSendDelay(long milliseconds) {
+        sendDelay = milliseconds;
     }
     
     private class Input implements Runnable {
@@ -156,17 +150,15 @@ public class IRCClient {
 
         public void run() {
             while (socket.isConnected()) {
-                if (messages > 0) {
-                    try {
-                        String message = outputQueue.take() + "\r\n";
-                        out.write(message);
-                        out.flush();
-                        System.out.print("Message sent: " + message);
-                        System.out.println("Messages remaining before timeout: " + (--messages));
-                    } 
-                    catch (Exception ex) {
-                        System.out.println(ex);
-                    }
+                try {
+                    String message = outputQueue.take() + "\r\n";
+                    out.write(message);
+                    out.flush();
+                    System.out.print("Message sent: " + message);
+                    Thread.sleep(sendDelay);
+                } 
+                catch (Exception ex) {
+                    System.out.println(ex);
                 }
             }
         }
