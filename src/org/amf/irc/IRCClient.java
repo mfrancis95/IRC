@@ -51,8 +51,51 @@ public class IRCClient {
         listeners.add(listener);
     }
     
+    protected <L extends IRCListener> List<L> getListenersByClass(Class<L> clazz) {
+        List<L> listeners = new LinkedList<>();
+        for (IRCListener listener : this.listeners) {
+            if (clazz.isAssignableFrom(listener.getClass())) {
+                listeners.add((L) listener);
+            }
+        }
+        return listeners;
+    }
+    
     public long getSendDelay() {
         return sendDelay;
+    }
+    
+    protected void handleLine(String line) {
+        if (line.contains("JOIN")) {
+            String channel = line.substring(line.indexOf("#"));
+            String user = line.substring(1, line.indexOf("!"));
+            for (IRCJoinListener listener : getListenersByClass(IRCJoinListener.class)) {
+                listener.onJoin(this, channel, user);
+            }
+        } 
+        else if (line.contains("PART")) {
+            String channel = line.substring(line.indexOf("#"));
+            String user = line.substring(1, line.indexOf("!"));
+            for (IRCLeaveListener listener : getListenersByClass(IRCLeaveListener.class)) {
+                listener.onLeave(this, channel, user);
+            }
+        } 
+        else if (line.contains("PING")) {
+            String server = line.substring(6);
+            for (IRCPingListener listener : getListenersByClass(IRCPingListener.class)) {
+                listener.onPing(this, server);
+            }
+        } 
+        else if (line.contains("PRIVMSG")) {
+            String from = line.substring(1, line.indexOf("!"));
+            String to = line.substring(line.indexOf("PRIVMSG") + 8);
+            String message = to;
+            to = to.substring(0, to.indexOf(" "));
+            message = message.substring(message.indexOf(":"));
+            for (IRCChatListener listener : getListenersByClass(IRCChatListener.class)) {
+                listener.onMessage(this, from, to, message);
+            }
+        }
     }
     
     public void join(String channel) {
@@ -94,49 +137,10 @@ public class IRCClient {
             try {
                 String line;
                 while ((line = in.readLine()) != null) {
-                    for (IRCListener listener : listeners) {
-                        if (listener instanceof IRCLineListener) {
-                            ((IRCLineListener) listener).onLine(IRCClient.this, line);
-                        }
+                    for (IRCLineListener listener : getListenersByClass(IRCLineListener.class)) {
+                        listener.onLine(IRCClient.this, line);
                     }
-                    if (line.contains("JOIN")) {
-                        String channel = line.substring(line.indexOf("#"));
-                        String user = line.substring(1, line.indexOf("!"));
-                        for (IRCListener listener : listeners) {
-                            if (listener instanceof IRCJoinListener) {
-                                ((IRCJoinListener) listener).onJoin(IRCClient.this, channel, user);
-                            }
-                        }
-                    }
-                    else if (line.contains("PART")) {
-                        String channel = line.substring(line.indexOf("#"));
-                        String user = line.substring(1, line.indexOf("!"));
-                        for (IRCListener listener : listeners) {
-                            if (listener instanceof IRCLeaveListener) {
-                                ((IRCLeaveListener) listener).onLeave(IRCClient.this, channel, user);
-                            }
-                        }
-                    }
-                    else if (line.contains("PING")) {
-                        String server = line.substring(6);
-                        for (IRCListener listener : listeners) {
-                            if (listener instanceof IRCPingListener) {
-                                ((IRCPingListener) listener).onPing(IRCClient.this, server);
-                            }
-                        }
-                    }
-                    else if (line.contains("PRIVMSG")) {
-                        String from = line.substring(1, line.indexOf("!"));
-                        String to = line.substring(line.indexOf("PRIVMSG") + 8);
-                        String message = to;
-                        to = to.substring(0, to.indexOf(" "));
-                        message = message.substring(message.indexOf(":"));
-                        for (IRCListener listener : listeners) {
-                            if (listener instanceof IRCChatListener) {
-                                ((IRCChatListener) listener).onMessage(IRCClient.this, from, to, message);
-                            }
-                        }
-                    }
+                    handleLine(line);
                 }
             } 
             catch (IOException ex) {
