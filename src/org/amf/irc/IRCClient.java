@@ -22,15 +22,15 @@ public class IRCClient {
     
     private Socket socket;
     
+    private long sendDelay;
+    
     private BufferedReader in;
     
     private BufferedWriter out;
     
-    private List<IRCListener> listeners;
+    private List<IRCListener<? extends IRCClient>> listeners;
     
     private BlockingQueue<String> outputQueue;
-    
-    private long sendDelay = (long) (30.0 / 20.0 * 1000.0);
     
     public IRCClient(String server) throws IOException {
         this(server, 6667);
@@ -39,6 +39,7 @@ public class IRCClient {
     public IRCClient(String server, int port) throws IOException {
         socket = new Socket();
         socket.connect(new InetSocketAddress(server, port), 2000);
+        sendDelay = 1500;
         in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
         out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
         listeners = new LinkedList<>();
@@ -47,13 +48,13 @@ public class IRCClient {
         new Thread(new Output()).start();
     }
     
-    public void addListener(IRCListener listener) {
+    public void addListener(IRCListener<? extends IRCClient> listener) {
         listeners.add(listener);
     }
     
     protected <L extends IRCListener> List<L> getListenersByClass(Class<L> clazz) {
         List<L> listeners = new LinkedList<>();
-        for (IRCListener listener : this.listeners) {
+        for (IRCListener<? extends IRCClient> listener : this.listeners) {
             if (clazz.isAssignableFrom(listener.getClass())) {
                 listeners.add((L) listener);
             }
@@ -115,7 +116,7 @@ public class IRCClient {
         sendLine("PONG :" + server);
     }
     
-    public void removeListener(IRCListener listener) {
+    public void removeListener(IRCListener<? extends IRCClient> listener) {
         listeners.remove(listener);
     }
     
